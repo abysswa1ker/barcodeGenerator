@@ -28,10 +28,10 @@ OUTPUT_DIR       = "output"
 # X=0, Y=0 is the BOTTOM-LEFT corner of the page.
 # Increase X  → moves barcode to the right
 # Increase Y  → moves barcode up
-BARCODE_X      = 52 * mm   # left edge of barcode
-BARCODE_Y      = 148 * mm  # bottom edge of barcode
-BARCODE_HEIGHT = 20 * mm   # height of the bars (without the number text)
-BAR_WIDTH      = 0.45 * mm # width of the thinnest bar (controls overall barcode width)
+BARCODE_X      = 42 * mm   # horizontal center of barcode
+BARCODE_Y      = 22 * mm   # bottom edge of barcode (from bottom of page)
+BARCODE_HEIGHT = 16 * mm   # height of the bars (without the number text)
+BAR_WIDTH      = 0.35 * mm # width of the thinnest bar (controls overall barcode width)
 
 # ─────────────────────────────────────────────────────────────────────────────
 
