@@ -28,7 +28,7 @@ OUTPUT_DIR        = "output"
 # NOTE: axes are swapped due to 90° rotation:
 #   BARCODE_X — менше = вище,    більше = нижче
 #   BARCODE_Y — менше = правіше, більше = лівіше
-BARCODE_X = 16 * mm
+BARCODE_X = 15.5 * mm
 BARCODE_Y = 47 * mm
 
 # Size of barcode
@@ -36,7 +36,7 @@ BAR_HEIGHT = 18 * mm   # висота смужок штрихкоду
 BAR_WIDTH  = 0.40 * mm  # товщина тонкої смужки (більше = довший штрихкод)
 
 # Gap between bars and the number text below
-TEXT_GAP   = 2 * mm
+TEXT_GAP   = 7
 FONT_SIZE  = 8  # points
 
 # ─────────────────────────────────────────────────────────────────────────────
