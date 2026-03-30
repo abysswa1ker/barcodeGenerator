@@ -24,14 +24,20 @@ TEMPLATE_PATH     = "template.pdf"
 CERTIFICATES_FILE = "certificates.txt"
 OUTPUT_DIR        = "output"
 
-# Center of barcode on page (raw PDF coordinates, bottom-left = 0,0).
-# Adjust these two values when calibrating:
-BARCODE_X = 42 * mm   # move left/right
-BARCODE_Y = 40 * mm   # move up/down
+# Position of barcode center on the page.
+# NOTE: axes are swapped due to 90° rotation:
+#   BARCODE_X — менше = вище,    більше = нижче
+#   BARCODE_Y — менше = правіше, більше = лівіше
+BARCODE_X = 16 * mm
+BARCODE_Y = 47 * mm
 
 # Size of barcode
-BAR_HEIGHT = 22 * mm  # visual height of the barcode (the bars themselves)
-BAR_WIDTH  = 0.22 * mm  # thin bar width — controls total barcode length
+BAR_HEIGHT = 18 * mm   # висота смужок штрихкоду
+BAR_WIDTH  = 0.40 * mm  # товщина тонкої смужки (більше = довший штрихкод)
+
+# Gap between bars and the number text below
+TEXT_GAP   = 2 * mm
+FONT_SIZE  = 8  # points
 
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -49,39 +55,26 @@ def create_barcode_overlay(
         number,
         barWidth=BAR_WIDTH,
         barHeight=BAR_HEIGHT,
-        humanReadable=True,
-        fontSize=7,
+        humanReadable=False,  # text is drawn manually below with a gap
         quiet=False,
     )
     bw = bc.width  # total barcode length (before rotation)
 
-    # Rotate 90° CCW so barcode lies horizontally on the card.
-    # After rotate(90): local +x → page +y, local +y → page -x
-    # Barcode spans page-x: [BARCODE_X - BAR_HEIGHT/2, BARCODE_X + BAR_HEIGHT/2]
-    #           page-y: [BARCODE_Y - bw/2,            BARCODE_Y + bw/2]
     tx = BARCODE_X + BAR_HEIGHT / 2
     ty = BARCODE_Y - bw / 2
-
-    if debug:
-        # Red cross-hair at anchor point
-        c.setStrokeColorRGB(1, 0, 0)
-        c.setLineWidth(0.5)
-        c.line(BARCODE_X - 5 * mm, BARCODE_Y, BARCODE_X + 5 * mm, BARCODE_Y)
-        c.line(BARCODE_X, BARCODE_Y - 5 * mm, BARCODE_X, BARCODE_Y + 5 * mm)
-        # Blue bounding box — this is exactly where the barcode will appear
-        c.setStrokeColorRGB(0, 0.4, 1)
-        c.setLineWidth(0.4)
-        c.rect(
-            BARCODE_X - BAR_HEIGHT / 2,
-            BARCODE_Y - bw / 2,
-            BAR_HEIGHT,
-            bw,
-        )
 
     c.saveState()
     c.translate(tx, ty)
     c.rotate(90)
+
+    # Draw barcode bars
     bc.drawOn(c, 0, 0)
+
+    # Draw number text below bars with a small gap
+    c.setFont("Helvetica", FONT_SIZE)
+    c.setFillColorRGB(0, 0, 0)
+    c.drawCentredString(bw / 2, -(TEXT_GAP + FONT_SIZE), number)
+
     c.restoreState()
 
     c.save()
