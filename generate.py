@@ -18,22 +18,45 @@ from reportlab.lib.units import mm
 from reportlab.graphics.barcode import code128
 
 
-# ── Configuration — adjust BARCODE_X / BARCODE_Y to fit the white rectangle ──
+# ── Configuration — adjust values to fit the white rectangle ─────────────────
 
-TEMPLATE_PATH    = "template.pdf"
+TEMPLATE_PATH     = "template.pdf"
 CERTIFICATES_FILE = "certificates.txt"
-OUTPUT_DIR       = "output"
+OUTPUT_DIR        = "output"
 
-# Position of the barcode on the page.
+# BARCODE_X / BARCODE_Y — center of the barcode on the page.
 # X=0, Y=0 is the BOTTOM-LEFT corner of the page.
-# Increase X  → moves barcode to the right
-# Increase Y  → moves barcode up
-BARCODE_X      = 42 * mm   # horizontal center of barcode
-BARCODE_Y      = 28 * mm   # bottom edge of barcode (from bottom of page)
-BARCODE_HEIGHT = 13 * mm   # height of the bars (without the number text)
-BAR_WIDTH      = 0.28 * mm # width of the thinnest bar (controls overall barcode width)
+# Increase X → moves right   |   Increase Y → moves up
+BARCODE_X = 42 * mm   # horizontal center of barcode
+
+# The barcode is rotated 90°, so BARCODE_Y is the vertical center.
+BARCODE_Y = 40 * mm   # vertical center of barcode
+
+# Visual width of the barcode (after rotation) — fits inside the white rectangle
+BARCODE_VISUAL_WIDTH  = 38 * mm  # how wide the barcode looks on the card
+BARCODE_VISUAL_HEIGHT = 16 * mm  # how tall the barcode looks on the card
 
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def _make_barcode(number: str):
+    """Create a Code128 barcode object sized to fit the visual dimensions."""
+    # After 90° rotation: bar_height → visual width, bw → visual height
+    # So bar_height = BARCODE_VISUAL_WIDTH, and we derive barWidth from VISUAL_HEIGHT
+    bar_height = BARCODE_VISUAL_WIDTH
+
+    # Estimate number of bar units for a 13-digit Code128C barcode (~123 units)
+    bar_units = 123
+    bar_width = BARCODE_VISUAL_HEIGHT / bar_units
+
+    return code128.Code128(
+        number,
+        barWidth=bar_width,
+        barHeight=bar_height,
+        humanReadable=True,
+        fontSize=7,
+        quiet=False,
+    )
 
 
 def create_barcode_overlay(
@@ -42,34 +65,43 @@ def create_barcode_overlay(
     page_height: float,
     debug: bool = False,
 ) -> bytes:
-    """Return bytes of a transparent PDF overlay containing the barcode."""
+    """Return bytes of a transparent PDF overlay containing the rotated barcode."""
     buf = BytesIO()
     c = canvas.Canvas(buf, pagesize=(page_width, page_height))
 
-    barcode = code128.Code128(
-        number,
-        barWidth=BAR_WIDTH,
-        barHeight=BARCODE_HEIGHT,
-        humanReadable=True,
-        fontSize=8,
-        quiet=False,
-    )
+    barcode = _make_barcode(number)
+    bw = barcode.width  # actual width in raw (pre-rotation) units
 
-    # Center the barcode horizontally around BARCODE_X
-    bw = barcode.width
-    x = BARCODE_X - bw / 2
+    # Rotate -90° (clockwise) so bars become horizontal.
+    # After rotation the barcode occupies:
+    #   visual width  = bar_height = BARCODE_VISUAL_WIDTH
+    #   visual height = bw         ≈ BARCODE_VISUAL_HEIGHT
+    # We position it so its center lands on (BARCODE_X, BARCODE_Y).
+    tx = BARCODE_X - BARCODE_VISUAL_WIDTH / 2   # left edge after rotation
+    ty = BARCODE_Y + bw / 2                      # top edge after rotation
 
     if debug:
-        # Draw a red cross-hair so you can see the anchor point
+        # Red cross-hair at anchor point
         c.setStrokeColorRGB(1, 0, 0)
         c.setLineWidth(0.5)
         c.line(BARCODE_X - 5 * mm, BARCODE_Y, BARCODE_X + 5 * mm, BARCODE_Y)
         c.line(BARCODE_X, BARCODE_Y - 5 * mm, BARCODE_X, BARCODE_Y + 5 * mm)
-        # Draw the bounding box of the barcode
-        c.setStrokeColorRGB(0, 0.5, 1)
-        c.rect(x, BARCODE_Y, bw, BARCODE_HEIGHT + 3 * mm)
+        # Blue bounding box showing where the barcode will appear
+        c.setStrokeColorRGB(0, 0.4, 1)
+        c.setLineWidth(0.4)
+        c.rect(
+            BARCODE_X - BARCODE_VISUAL_WIDTH / 2,
+            BARCODE_Y - bw / 2,
+            BARCODE_VISUAL_WIDTH,
+            bw,
+        )
 
-    barcode.drawOn(c, x, BARCODE_Y)
+    c.saveState()
+    c.translate(tx, ty)
+    c.rotate(-90)
+    barcode.drawOn(c, 0, 0)
+    c.restoreState()
+
     c.save()
     buf.seek(0)
     return buf.read()
@@ -112,12 +144,14 @@ def calibrate():
 
     pw = float(template_page.mediabox.width)
     ph = float(template_page.mediabox.height)
-    print(f"Template size : {pw/mm:.1f} x {ph/mm:.1f} mm")
-    print(f"Barcode anchor: X={BARCODE_X/mm:.1f} mm  Y={BARCODE_Y/mm:.1f} mm")
+    print(f"Template size  : {pw/mm:.1f} x {ph/mm:.1f} mm")
+    print(f"Barcode center : X={BARCODE_X/mm:.1f} mm  Y={BARCODE_Y/mm:.1f} mm")
+    print(f"Barcode size   : {BARCODE_VISUAL_WIDTH/mm:.1f} x {BARCODE_VISUAL_HEIGHT/mm:.1f} mm")
     print(f"Saved          : {out_path}")
     print()
-    print("Open CALIBRATE.pdf and check the barcode position.")
-    print("Adjust BARCODE_X and BARCODE_Y in generate.py, then re-run --calibrate.")
+    print("Open CALIBRATE.pdf and check the blue rectangle — that is the barcode area.")
+    print("Adjust BARCODE_X / BARCODE_Y / BARCODE_VISUAL_WIDTH / BARCODE_VISUAL_HEIGHT")
+    print("in generate.py, then re-run --calibrate.")
 
 
 def generate_all():
