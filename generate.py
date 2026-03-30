@@ -73,7 +73,7 @@ def create_barcode_overlay(
     # Draw number text below bars with a small gap
     c.setFont("Helvetica", FONT_SIZE)
     c.setFillColorRGB(0, 0, 0)
-    c.drawCentredString(bw / 2, -(TEXT_GAP + FONT_SIZE), number)
+    c.drawCentredString(bw / 2, -TEXT_GAP, number)
 
     c.restoreState()
 
