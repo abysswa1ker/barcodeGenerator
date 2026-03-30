@@ -13,6 +13,7 @@ from pathlib import Path
 from io import BytesIO
 
 from pypdf import PdfReader, PdfWriter
+import openpyxl
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 from reportlab.graphics.barcode import code128
@@ -130,8 +131,15 @@ def generate_all():
         if not Path(path).exists():
             sys.exit(f"ERROR: {label} file '{path}' not found.")
 
-    with open(CERTIFICATES_FILE, encoding="utf-8") as f:
-        numbers = [line.strip() for line in f if line.strip()]
+    ext = Path(CERTIFICATES_FILE).suffix.lower()
+    if ext == ".xlsx":
+        wb = openpyxl.load_workbook(CERTIFICATES_FILE, read_only=True, data_only=True)
+        ws = wb.active
+        numbers = [str(row[0].value).strip() for row in ws.iter_rows() if row[0].value is not None]
+        wb.close()
+    else:
+        with open(CERTIFICATES_FILE, encoding="utf-8") as f:
+            numbers = [line.strip() for line in f if line.strip()]
 
     if not numbers:
         sys.exit("ERROR: certificates.txt is empty.")
